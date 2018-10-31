@@ -93,8 +93,8 @@ class SensorModel:
   '''
     Compute table enumerating the probability of observing a measurement 
     given the expected measurement
-    Element (r,d) of the table is the probability of observing measurement r
-    when the expected measurement is d
+    Element (r,d) of the table is the probability of observing measurement r (in pixels)
+    when the expected measurement is d (in pixels)
     max_range_px: The maximum range in pixels
     Returns the table (which is a numpy array with dimensions [max_range_px+1, max_range_px+1]) 
   '''  
@@ -105,7 +105,16 @@ class SensorModel:
 
     # Populate sensor_model_table according to the laser beam model specified
     # in CH 6.3 of Probabilistic Robotics
+    # Note: no need to use any functions from utils.py to compute between world
+    #       and map coordinates here    
     # YOUR CODE HERE
+    # Pseudo-code
+    # for d in xrange(table_width):
+    #   possibly some stuff here
+    #   for r in xrange(table_width):
+    #     Populate the sensor model table at (r,d) with the probability of 
+    #     observing measurement r (in pixels)
+    #     when the expected measurement is d (in pixels)
   
     return sensor_model_table
 
