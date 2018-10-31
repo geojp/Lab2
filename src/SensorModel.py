@@ -56,8 +56,8 @@ class SensorModel:
     self.range_method = range_libc.PyCDDTCast(oMap, max_range_px, THETA_DISCRETIZATION) # The range method that will be used for ray casting
     #self.range_method = range_libc.PyRayMarchingGPU(oMap, max_range_px) # The range method that will be used for ray casting
     self.range_method.set_sensor_model(self.precompute_sensor_model(max_range_px)) # Load the sensor model expressed as a table
-    self.queries = None
-    self.ranges = None
+    self.queries = None # Do not modify this variable
+    self.ranges = None # Do not modify this variable
     self.laser_angles = None # The angles of each ray
     self.downsampled_angles = None # The angles of the downsampled rays 
     self.do_resample = False # Set so that outside code can know that it's time to resample
@@ -76,6 +76,7 @@ class SensorModel:
     #   obs is a a two element tuple
     #   obs[0] is the downsampled ranges
     #   obs[1] is the downsampled angles
+    #   Note it should be the case that obs[0].shape[0] == obs[1].shape[0]
     #   Each element of obs must be a numpy array of type np.float32
     #   Use self.LASER_RAY_STEP as the downsampling step
     #   Keep efficiency in mind, including by caching certain things that won't change across future iterations of this callback
