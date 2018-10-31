@@ -82,6 +82,7 @@ class SensorModel:
     #   Keep efficiency in mind, including by caching certain things that won't change across future iterations of this callback
     #   and vectorizing computations as much as possible
     #   Set all range measurements that are NAN or 0.0 to self.MAX_RANGE_METERS
+    #   You may choose to use self.laser_angles and self.downsampled_angles here
     # YOUR CODE HERE
 
     self.apply_sensor_model(self.particles, obs, self.weights)
@@ -116,7 +117,8 @@ class SensorModel:
     #     Populate the sensor model table at (r,d) with the probability of 
     #     observing measurement r (in pixels)
     #     when the expected measurement is d (in pixels)
-  
+    # Note that the 'self' parameter is completely unused in this function
+    
     return sensor_model_table
 
   '''
