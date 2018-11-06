@@ -3,6 +3,7 @@
 import rospy
 import numpy as np
 import utils as Utils
+import math
 from std_msgs.msg import Float64
 from threading import Lock
 from nav_msgs.msg import Odometry
@@ -10,11 +11,11 @@ from vesc_msgs.msg import VescStateStamped
 import matplotlib.pyplot as plt
 
 # YOUR CODE HERE (Set these values and use them in motion_cb)
-KM_V_NOISE = # Kinematic car velocity noise std dev
-KM_DELTA_NOISE = # Kinematic car delta noise std dev
-KM_X_FIX_NOISE = # Kinematic car x position constant noise std dev
-KM_Y_FIX_NOISE = # Kinematic car y position constant noise std dev
-KM_THETA_FIX_NOISE = # Kinematic car theta constant noise std dev
+KM_V_NOISE = 0.001# Kinematic car velocity noise std dev
+KM_DELTA_NOISE = 0.005# Kinematic car delta noise std dev
+KM_X_FIX_NOISE = 0.001# Kinematic car x position constant noise std dev
+KM_Y_FIX_NOISE = 0.001# Kinematic car y position constant noise std dev
+KM_THETA_FIX_NOISE = 0.001# Kinematic car theta constant noise std dev
 
 '''
   Propagates the particles forward based on the velocity and steering angle of the car
@@ -80,23 +81,38 @@ class KinematicMotionModel:
       self.last_vesc_stamp = msg.header.stamp
       self.state_lock.release()
       return
-    
+
     # Convert raw msgs to controls
-    # Note that control_val = (raw_msg_val - offset_param) / gain_param
-    # E.g: curr_speed = (msg.state.speed - self.SPEED_TO_ERPM_OFFSET) / self.SPEED_TO_ERPM_GAIN
-    # YOUR CODE HERE
-    
+    curr_speed = (msg.state.speed - self.SPEED_TO_ERPM_OFFSET) / self.SPEED_TO_ERPM_GAIN
+    curr_delta = (self.last_servo_cmd - self.STEERING_TO_SERVO_OFFSET) / self.STEERING_TO_SERVO_GAIN
+
     # Propagate particles forward in place
+    for i in xrange(len(self.particles[:, 0])):
       # Sample control noise and add to nominal control
+      noisySpeed = np.random.normal(curr_speed,KM_V_NOISE,1)[0]
+      noisyDelta = np.random.normal(curr_delta,KM_DELTA_NOISE,1)[0]
+
+      pTm1 = np.copy(self.particles[i,:])
+
       # Make sure different control noise is sampled for each particle
       # Propagate particles through kinematic model with noisy controls
-      # Sample model noise for each particle
-      # Limit particle theta to be between -pi and pi
-      # Vectorize your computations as much as possible
-      # All updates to self.particles should be in-place
-    # YOUR CODE HERE
+      beta = math.atan(0.5*math.tan(noisyDelta))
+      deltaT = msg.header.stamp.to_sec() - self.last_vesc_stamp.to_sec()
+      self.particles[i,2] += noisySpeed * math.sin(2*beta) * deltaT / self.CAR_LENGTH
+      self.particles[i,2] = np.random.normal(self.particles[i,2],KM_THETA_FIX_NOISE,1)[0]
+      # Limits all angles from 0 -> 2*pi
+      self.particles[i,2] = np.mod(self.particles[i,2], 2*np.pi)
+      # Limits all angles from -pi -> pi
+      if self.particles[i,2] > np.pi: self.particles[i,2] -= 2*np.pi
 
-    self.last_vesc_stamp = msg.header.stamp    
+      self.particles[i,0] += self.CAR_LENGTH * (math.sin(self.particles[i,2]) - math.sin(pTm1[2])) / math.sin(2*beta)
+      self.particles[i,1] += self.CAR_LENGTH * (-math.cos(self.particles[i,2]) + math.cos(pTm1[2])) / math.sin(2*beta)
+      
+      # Sample model noise for each particle
+      self.particles[i,0] = np.random.normal(self.particles[i,0],KM_X_FIX_NOISE,1)[0]
+      self.particles[i,1] = np.random.normal(self.particles[i,1],KM_Y_FIX_NOISE,1)[0]
+      
+    self.last_vesc_stamp = msg.header.stamp
     self.state_lock.release()
 
 '''

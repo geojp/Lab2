@@ -33,9 +33,11 @@ class ReSampler:
   '''
   def resample_naiive(self):
     self.state_lock.acquire()   
-   
-    # YOUR CODE HERE
-    
+
+    self.particles[:,0] = np.random.choice(self.particles[:,0], len(self.particles[:,0]), p=self.weights)
+    self.particles[:,1] = np.random.choice(self.particles[:,1], len(self.particles[:,1]), p=self.weights)
+    self.particles[:,2] = np.random.choice(self.particles[:,2], len(self.particles[:,2]), p=self.weights)
+
     self.state_lock.release()
   
   '''
@@ -44,9 +46,19 @@ class ReSampler:
   '''
   def resample_low_variance(self):
     self.state_lock.acquire()
-    
-    # YOUR CODE HERE
-    
+
+    M = len(self.particles[:,0])
+    x = np.zeros(M)
+    r = np.random.uniform(0, 1.0/M)
+    c = self.weights[1]
+    i = 1
+    for m in range(1,M):
+      U = r + (m-1) / float(M)
+      while U > c:
+        i += 1
+        if i < M: c += self.weights[i]
+      self.particles[m,:] = self.particles[i,:]
+      
     self.state_lock.release()
     
 import matplotlib.pyplot as plt

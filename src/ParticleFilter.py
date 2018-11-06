@@ -7,6 +7,7 @@ import utils as Utils
 import tf.transformations
 import tf
 from threading import Lock
+import random
 
 from nav_msgs.srv import GetMap
 from geometry_msgs.msg import PoseStamped, PoseArray, PoseWithCovarianceStamped, PointStamped
@@ -111,14 +112,25 @@ class ParticleFilter():
     self.state_lock.acquire()
     
     # Use self.permissible_region to get in-bounds states
+    openX, openY = np.where(self.permissible_region == 1)
+
     # Uniformally sample from in-bounds regions
+    randomIndex = random.choice(list(enumerate(openX)))[0]
+    self.particles[:,0] = openX[randomIndex]
+    self.particles[:,1] = openY[randomIndex]
+    self.particles[:,2] = np.random.uniform(0.0, 2.0 * np.pi, self.N_PARTICLES)
+
     # Convert map samples (which are in pixels) to world samples (in meters/radians)
     #   Take a look at utils.py
     # Update particles in place
+    Utils.map_to_world(self.particles, self.map_info)
+
     # Update weights in place so that all particles have the same weight and the 
     # sum of the weights is one.
+    self.weights[:] = 1.0 / self.N_PARTICLES
+
     # YOUR CODE HERE
-  
+
     self.state_lock.release()
     
   '''
@@ -153,7 +165,14 @@ class ParticleFilter():
   '''
   def expected_pose(self):
     # YOUR CODE HERE
-    pass
+
+    pose = np.zeros(3)
+    pose[0] = np.dot(self.particles[:,0], self.weights)
+    pose[1] = np.dot(self.particles[:,1], self.weights)
+    pose[2] = np.arctan2(np.sum(np.sin(self.particles[:,2])), \
+                       np.sum(np.cos(self.particles[:,2])))          
+
+    return pose
     
   '''
     Callback for '/initialpose' topic. RVIZ publishes a message to this topic when you specify an initial pose 
@@ -162,9 +181,15 @@ class ParticleFilter():
   '''
   def clicked_pose_cb(self, msg):
     self.state_lock.acquire()
+
     # Sample particles from a gaussian centered around the received pose
     # Updates the particles in place
-    # Updates the weights to all be equal, and sum to one    
+    self.particles[:,0] = np.random.normal(msg.pose.pose.position.x, 0.001, size=self.N_PARTICLES)
+    self.particles[:,1] = np.random.normal(msg.pose.pose.position.y, 0.001, size=self.N_PARTICLES)
+    self.particles[:,2] = np.random.normal(Utils.quaternion_to_angle(msg.pose.pose.orientation), 0.001, size=self.N_PARTICLES)
+    # Updates the weights to all be equal, and sum to one
+    self.weights[:] = 1.0 / self.N_PARTICLES
+
     # YOUR CODE HERE
     
     self.state_lock.release()
@@ -178,7 +203,6 @@ class ParticleFilter():
        Sample so that particles with higher weights are more likely to be sampled.
   '''
   def visualize(self):
-    #print 'Visualizing...'
     self.state_lock.acquire()
     self.inferred_pose = self.expected_pose()
 
